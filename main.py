@@ -7,7 +7,7 @@ np.random.seed(10)
 random.seed(10)
 
 # Sidelength of the grid
-GRID_SIZE = 4
+GRID_SIZE = 1000
 
 # Generating the grid, with dtype integer
 grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=int) + 1
@@ -20,22 +20,28 @@ def accept_change(delta_energy, t_red):
         return True
     else:
         return False
-def local_energy(grid, x_pos, y_pos):
+def local_energy_flipped(lattice, x_pos, y_pos):
     # dummy functie, vervang met je eigen functie
-    return random.rand() * 3
+    # doesnt have a minus sign because lattice[x,y] has been flipped
+    left = lattice[y_pos, x_pos] * lattice[y_pos, (x_pos - 1) % GRID_SIZE]
+    right = lattice[y_pos, x_pos] * lattice[y_pos, (x_pos + 1) % GRID_SIZE]
+    top = lattice[y_pos, x_pos] * lattice[(y_pos + 1) % GRID_SIZE, x_pos]
+    bottom = lattice[y_pos, x_pos] * lattice[(y_pos - 1) % GRID_SIZE, x_pos]
+    delta_energy = 4 * (left + right + top + bottom)
+    return delta_energy
 
 def total_energy_simple(lattice):
-    print("test")
+    # print("test")
     lattice_energy = []
     for y_pos, lattice_row in enumerate(lattice):
         lattice_row_energy = []
         for x_pos, s_i in enumerate(lattice_row):
             y_energy = lattice[(y_pos+1) % GRID_SIZE, x_pos % GRID_SIZE] + lattice[(y_pos-1) % GRID_SIZE, x_pos % GRID_SIZE]
             x_energy = lattice_row[(x_pos-1) % GRID_SIZE] + lattice_row[(x_pos+1) % GRID_SIZE]
-            local_energy = (x_energy + y_energy)*s_i
+            local_energy = -(x_energy + y_energy)*s_i
             lattice_row_energy.append(local_energy)
         lattice_energy.append(lattice_row_energy)   
-    print(lattice_energy) 
+    # print(lattice_energy) 
     return np.sum(lattice_energy)
 
 
@@ -56,8 +62,8 @@ def total_energy_quick(lattice):
 #...     for x, el in enumerate(row):
 #...             print(el, grid[(y+1) % GRID_SIZE,x % GRID_SIZE])
 
-def total_energy_simple(lattice):
-    pass
+#def total_energy_simple(lattice):
+#    pass
 
 def simulate(t_red, grid, iterations):
     energy = total_energy_quick()
