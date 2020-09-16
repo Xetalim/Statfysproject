@@ -62,10 +62,41 @@ def total_energy_quick(lattice):
     # factor 0.5 because we don't want to count double
     return 0.5 * np.sum(energy * lattice)
 
+
+def calc_stop_sim(perc, energy_list, i, iterations, calc_freq):
+    maxroll = 100
+    index = (i // calc_freq) / ((iterations // calc_freq) // maxroll)
+    
+    # code to determine equilibrium
+    # if index in np.arange(0, 50, dtype=int):
+        # print(index)
+
+    if index in np.arange(50, maxroll, dtype=int):
+        index = int(index)
+        a = np.average(energy_list[max(i // calc_freq - 50 * (i // index) // calc_freq,0):max(i // calc_freq - 25 * (i // index) // calc_freq,1)])
+        b = np.average(energy_list[max(i // calc_freq - 25 * (i // index) // calc_freq,0):i // calc_freq])
+
+        newperc = np.abs((a-b)/(a) * 100)
+        
+        print(a,b)
+        print("{} out of {}, diff = {:.2f}".format(index, maxroll, newperc))
+
+
+        stop = (newperc < 2 and perc < 2)
+        return stop, newperc, energy_list[max(i // calc_freq - 25 * (i // index) // calc_freq,0):i // calc_freq]
+    else:
+        return False, 0, []
+
 def simulate(t_red, grid, iterations, calc_freq, animate=False):
     energy = total_energy_quick(grid)
-    energy_arr = np.empty(iterations // calc_freq)
-    mag_arr = np.empty(iterations // calc_freq)
+    # energy_arr = np.empty(iterations // calc_freq)
+    # mag_arr = np.empty(iterations // calc_freq)
+    energy_list = []
+    mag_list = []
+    diff_list = []
+    
+    perc = 100
+    
     for i in range(0, iterations):
         accept = False
         # choosing random coordinates
@@ -93,10 +124,22 @@ def simulate(t_red, grid, iterations, calc_freq, animate=False):
         
         # calculate and append all observables
         if i % calc_freq == 0:
-            energy_arr[i // calc_freq] = energy
-            mag_arr[i // calc_freq] = np.sum(grid)
-    return energy_arr, mag_arr
 
+            energy_list.append(energy)
+            mag_list.append(np.sum(grid))
+            
+            stopsim, perc, en_return = calc_stop_sim(perc,mag_list, i, iterations, calc_freq)
+            diff_list.append(perc)
+            if stopsim:
+                break
+    return energy_list, mag_list, grid, diff_list
+
+en, mag, endgrid, diff = simulate(1, grid, int(20e6), 200)
+# plotting the end grid after n iteratons
+plt.imshow(endgrid, aspect='equal')
+plt.xlim(-.5,GRID_SIZE-.5) #the grid starts at [-.5,-.5]
+plt.ylim(-.5,GRID_SIZE-.5)
+plt.show()
 
 # animating the simulation, needs a different structure
 
