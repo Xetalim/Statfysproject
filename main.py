@@ -2,6 +2,7 @@ import numpy as np
 import random
 import math
 import matplotlib.pyplot as plt
+from matplotlib.animation import Animation
 
 np.random.seed(10)
 random.seed(10)
@@ -21,13 +22,13 @@ def accept_change(delta_energy, t_red):
     else:
         return False
 def local_energy_flipped(lattice, x_pos, y_pos):
-    # dummy functie, vervang met je eigen functie
     # doesnt have a minus sign because lattice[x,y] has been flipped
     left = lattice[y_pos, x_pos] * lattice[y_pos, (x_pos - 1) % GRID_SIZE]
     right = lattice[y_pos, x_pos] * lattice[y_pos, (x_pos + 1) % GRID_SIZE]
     top = lattice[y_pos, x_pos] * lattice[(y_pos + 1) % GRID_SIZE, x_pos]
     bottom = lattice[y_pos, x_pos] * lattice[(y_pos - 1) % GRID_SIZE, x_pos]
-    delta_energy = 4 * (left + right + top + bottom)
+    # factor 2, because we don't want to count anything double
+    delta_energy = 2 * (left + right + top + bottom)
     return delta_energy
 
 def total_energy_simple(lattice):
@@ -41,8 +42,8 @@ def total_energy_simple(lattice):
             local_energy = -(x_energy + y_energy)*s_i
             lattice_row_energy.append(local_energy)
         lattice_energy.append(lattice_row_energy)   
-    # print(lattice_energy) 
-    return np.sum(lattice_energy)
+    # factor 0.5 because we don't want to count double
+    return 0.5 * np.sum(lattice_energy)
 
 
 def total_energy_quick(lattice):
@@ -56,14 +57,9 @@ def total_energy_quick(lattice):
     energy -= np.take(lattice, np.arange(1, GRID_SIZE + 1), axis=0, mode="wrap")
     # multiplying every spin by it's top neighbour
     energy -= np.take(lattice, np.arange(-1, GRID_SIZE -1), axis=0, mode="wrap")
-    # print(str(left) + "\n" + str(right) + "\n" + str(below) + "\n" + str(up))
-    return np.sum(energy * lattice)
-#for y, row in enumerate(grid):
-#...     for x, el in enumerate(row):
-#...             print(el, grid[(y+1) % GRID_SIZE,x % GRID_SIZE])
 
-#def total_energy_simple(lattice):
-#    pass
+    # factor 0.5 because we don't want to count double
+    return 0.5 * np.sum(energy * lattice)
 
 def simulate(t_red, grid, iterations):
     energy = total_energy_quick()
@@ -77,7 +73,7 @@ def simulate(t_red, grid, iterations):
         # but about 100 times as fast
 
         # calculate the difference in energy
-        delta_energy = local_energy(grid, rand_x, rand_y)
+        delta_energy = local_energy_flipped(grid, rand_x, rand_y)
 
         # if delta_energy is less than zero, accept the change
         # and update the energy
@@ -92,7 +88,6 @@ def simulate(t_red, grid, iterations):
         if accept:
             grid[rand_y, rand_x] *= -1
         
-        
-        
+
 
 
