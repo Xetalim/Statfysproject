@@ -2,14 +2,16 @@ import numpy as np
 import random
 import math
 import matplotlib.pyplot as plt
-from matplotlib.animation import Animation
+from matplotlib import animation
 
 np.random.seed(10)
 random.seed(10)
 
 # Sidelength of the grid
-GRID_SIZE = 1000
+GRID_SIZE = 25
 
+# decide whether or not to animate the simulation
+ANIMATE_SIM = False
 # Generating the grid, with dtype integer
 grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=int) + 1
 grid = (np.random.randint(0, 2, size=(GRID_SIZE, GRID_SIZE)) * 2) - 1
@@ -22,7 +24,7 @@ def accept_change(delta_energy, t_red):
     else:
         return False
 def local_energy_flipped(lattice, x_pos, y_pos):
-    # doesnt have a minus sign because lattice[x,y] has been flipped
+    # doesn't have a minus sign because lattice[x,y] has been flipped
     left = lattice[y_pos, x_pos] * lattice[y_pos, (x_pos - 1) % GRID_SIZE]
     right = lattice[y_pos, x_pos] * lattice[y_pos, (x_pos + 1) % GRID_SIZE]
     top = lattice[y_pos, x_pos] * lattice[(y_pos + 1) % GRID_SIZE, x_pos]
@@ -32,7 +34,6 @@ def local_energy_flipped(lattice, x_pos, y_pos):
     return delta_energy
 
 def total_energy_simple(lattice):
-    # print("test")
     lattice_energy = []
     for y_pos, lattice_row in enumerate(lattice):
         lattice_row_energy = []
@@ -61,8 +62,10 @@ def total_energy_quick(lattice):
     # factor 0.5 because we don't want to count double
     return 0.5 * np.sum(energy * lattice)
 
-def simulate(t_red, grid, iterations):
-    energy = total_energy_quick()
+def simulate(t_red, grid, iterations, calc_freq, animate=False):
+    energy = total_energy_quick(grid)
+    energy_arr = np.empty(iterations // calc_freq)
+    mag_arr = np.empty(iterations // calc_freq)
     for i in range(0, iterations):
         accept = False
         # choosing random coordinates
@@ -70,7 +73,7 @@ def simulate(t_red, grid, iterations):
         rand_y = int(random.random() * GRID_SIZE)
         # is the same as
         # rand_x = np.random.randint(0, GRID_SIZE)
-        # but about 100 times as fast
+        # but about 1000 times as fast
 
         # calculate the difference in energy
         delta_energy = local_energy_flipped(grid, rand_x, rand_y)
@@ -88,6 +91,78 @@ def simulate(t_red, grid, iterations):
         if accept:
             grid[rand_y, rand_x] *= -1
         
+        # calculate and append all observables
+        if i % calc_freq == 0:
+            energy_arr[i // calc_freq] = energy
+            mag_arr[i // calc_freq] = np.sum(grid)
+    return energy_arr, mag_arr
 
 
+# animating the simulation, needs a different structure
 
+
+def init():
+    global energy
+    global energies
+    global xrange
+    energy = total_energy_quick(grid)
+    im.set_data(grid)
+    line.set_xdata(xrange)
+    line.set_ydata(energies)
+    
+    return [im, line]
+
+def animate(i):
+    global energy
+    global grid
+    global energies
+    global xrange
+    for j in range(0, 1000):
+        accept = False
+        # choosing random coordinates
+        rand_x = int(random.random() * GRID_SIZE)
+        rand_y = int(random.random() * GRID_SIZE)
+        # is the same as
+        # rand_x = np.random.randint(0, GRID_SIZE)
+        # but about 1000 times as fast
+    
+        # calculate the difference in energy
+        delta_energy = local_energy_flipped(grid, rand_x, rand_y)
+    
+        # if delta_energy is less than zero, accept the change
+        # and update the energy
+        if delta_energy <= 0:
+            energy = energy + delta_energy
+            accept = True
+        # if delta_energy is more than zero, accept the change
+        # with the probability as given in the algorithm
+        elif accept_change(delta_energy, t_red):
+            energy = energy + delta_energy
+            accept = True
+        if accept:
+            grid[rand_y, rand_x] *= -1
+    energies.append(energy)
+    xrange.append(i)
+    im.set_array(grid)
+    line.set_xdata(xrange)
+    line.set_ydata(energies)
+    # line = [xrange, energies]
+    ax[1].set_ylim(min(energies) - 100, max(energies) + 100)
+    return [im, line]
+
+
+if ANIMATE_SIM:
+    t_red = 2
+    
+    fig, ax = plt.subplots(1, 2)
+    # ax = plt.axes(xlim=(0, GRID_SIZE), ylim=(0, GRID_SIZE))
+    # ax[0].set_xlim(0, GRID_S)
+    ax[1].set_xlim(0, 1000)
+    # ax[1].set_ylim(-GRID_SIZE**2, 0)
+    energies = []
+    xrange = []
+    im=ax[0].imshow(grid,interpolation='none')
+    line,=ax[1].plot(xrange, energies)
+    # initialization function: plot the background of each frame
+    anim = animation.FuncAnimation(fig, animate, init_func=init,
+                                frames=1000, interval=1)
