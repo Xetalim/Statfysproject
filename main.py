@@ -63,29 +63,20 @@ def total_energy_quick(lattice):
     return 0.5 * np.sum(energy * lattice)
 
 
-def calc_stop_sim(perc, energy_list, i, iterations, calc_freq):
-    maxroll = 100
-    index = (i // calc_freq) / ((iterations // calc_freq) // maxroll)
-    
-    # code to determine equilibrium
-    # if index in np.arange(0, 50, dtype=int):
-        # print(index)
+def calc_stop_sim(perc, energy_list, i, index, calc_freq):
+    a = np.average(energy_list[max(i // calc_freq - 50 * (i // index) // calc_freq,0):max(i // calc_freq - 25 * (i // index) // calc_freq,1)])
+    b = np.average(energy_list[max(i // calc_freq - 25 * (i // index) // calc_freq,0):i // calc_freq])
 
-    if index in np.arange(50, maxroll, dtype=int):
-        index = int(index)
-        a = np.average(energy_list[max(i // calc_freq - 50 * (i // index) // calc_freq,0):max(i // calc_freq - 25 * (i // index) // calc_freq,1)])
-        b = np.average(energy_list[max(i // calc_freq - 25 * (i // index) // calc_freq,0):i // calc_freq])
-
-        newperc = np.abs((a-b)/(a) * 100)
-        
-        print(a,b)
-        print("{} out of {}, diff = {:.2f}".format(index, maxroll, newperc))
+    newperc = np.abs((a-b)/(a) * 100)
+    min_i = max(i // calc_freq - 25 * (i // index) // calc_freq,0)
+    max_i = i // calc_freq
+    # print(a,b)
+    # print("{} out of {}, diff = {:.2f}".format(index, maxroll, newperc))
 
 
-        stop = (newperc < 2 and perc < 2)
-        return stop, newperc, energy_list[max(i // calc_freq - 25 * (i // index) // calc_freq,0):i // calc_freq]
-    else:
-        return False, 0, []
+    stop = (newperc < 2 and perc < 2)
+    return stop, newperc, (min_i, max_i)
+
 
 def simulate(t_red, grid, iterations, calc_freq, animate=False):
     energy = total_energy_quick(grid)
@@ -127,14 +118,31 @@ def simulate(t_red, grid, iterations, calc_freq, animate=False):
 
             energy_list.append(energy)
             mag_list.append(np.sum(grid))
+            maxroll = 100
+            index = (i // calc_freq) / ((iterations // calc_freq) // maxroll)
             
-            stopsim, perc, en_return = calc_stop_sim(perc,mag_list, i, iterations, calc_freq)
-            diff_list.append(perc)
-            if stopsim:
-                break
-    return energy_list, mag_list, grid, diff_list
+            # code to determine equilibrium
+            # if index in np.arange(0, 50, dtype=int):
+                # print(index)
+            
+            # check if we are in equilibrium every 100th of the simulation,
+            # starting at 50
+            if index in np.arange(50, 100, dtype=int):
+                index = int(index)
+                stopsim, perc, indices = calc_stop_sim(perc, energy_list,i, index, calc_freq)
+                diff_list.append(perc)
+                if stopsim:
+                    break
+    return energy_list, mag_list, grid, diff_list, indices
 
-en, mag, endgrid, diff = simulate(1, grid, int(20e6), 200)
+def calculate_values(en, mag, indices):
+    capacity = np.var(en[indices[0]:indices[1]])
+    mag = np.average(mag[indices[0]:indices[1]])
+    mag_abs = np.average(np.abs(mag[indices[0]:indices[1]]))
+    avg_en = np.average(en[indices[0]:indices[1]])
+    return capacity, mag, mag_abs, avg_en
+
+en, mag, endgrid, diff, indices = simulate(1, grid, int(10e4), 10)
 # plotting the end grid after n iteratons
 plt.imshow(endgrid, aspect='equal')
 plt.xlim(-.5,GRID_SIZE-.5) #the grid starts at [-.5,-.5]
