@@ -4,6 +4,9 @@ import math
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
+import time
+import datetime as dt
+
 np.random.seed(10)
 random.seed(10)
 
@@ -135,19 +138,67 @@ def simulate(t_red, grid, iterations, calc_freq, animate=False):
                     break
     return energy_list, mag_list, grid, diff_list, indices
 
-def calculate_values(en, mag, indices):
+def calculate_values(en, maglist, indices):
     capacity = np.var(en[indices[0]:indices[1]])
-    mag = np.average(mag[indices[0]:indices[1]])
-    mag_abs = np.average(np.abs(mag[indices[0]:indices[1]]))
+    mag = np.average(maglist[indices[0]:indices[1]])
+    mag_abs = np.average(np.abs(maglist[indices[0]:indices[1]]))
     avg_en = np.average(en[indices[0]:indices[1]])
     return capacity, mag, mag_abs, avg_en
 
-en, mag, endgrid, diff, indices = simulate(1, grid, int(10e4), 10)
+def calc_remaining_time(starttime, cur_iter, max_iter):
+
+    telapsed = time.time() - starttime
+    testimated = (telapsed/cur_iter)*(max_iter)
+
+    finishtime = starttime + testimated
+    finishtime = dt.datetime.fromtimestamp(finishtime).strftime("%H:%M:%S")  # in time
+
+    lefttime = testimated-telapsed  # in seconds
+
+    return (int(telapsed), int(lefttime), finishtime)
+
+steps = 50
+maxtred = 4
+tredlist = np.linspace(0, maxtred, steps)
+clist = []
+maglist = []
+mag_abslist = []
+enlist = []
+
+
+# import multiprocessing
+# from joblib import Parallel, delayed
+# num_cores = multiprocessing.cpu_count()
+
+
+# def wrapper(tred):
+#     grid = (np.random.randint(0, 2, size=(GRID_SIZE, GRID_SIZE)) * 2) - 1
+#     en, mag, endgrid, diff, indices = simulate(tred, grid, int(10e5), 10)
+    
+#     capacity, mag, mag_abs, avg_en = calculate_values(en, mag, indices)
+#     return (capacity, mag, mag_abs, avg_en)
+
+# results = Parallel(n_jobs=num_cores, verbose=50)(delayed(wrapper)(tred) for tred in tredlist)
+
+start = time.time()
+for j, tred in enumerate(np.linspace(0, maxtred, steps)):
+    grid = (np.random.randint(0, 2, size=(GRID_SIZE, GRID_SIZE)) * 2) - 1
+    en, mag, endgrid, diff, indices = simulate(tred, grid, int(10e5), 10)
+    
+    capacity, mag, mag_abs, avg_en = calculate_values(en, mag, indices)
+    clist.append(capacity)
+    maglist.append(mag)
+    mag_abslist.append(mag_abs)
+    enlist.append(avg_en)
+    if j % 5 == 0:
+        time_left = calc_remaining_time(start, j+1, steps)
+        print("time elapsed: %s(s), time left: %s(s), estimated finish time: %s"%time_left)
+    
 # plotting the end grid after n iteratons
-plt.imshow(endgrid, aspect='equal')
-plt.xlim(-.5,GRID_SIZE-.5) #the grid starts at [-.5,-.5]
-plt.ylim(-.5,GRID_SIZE-.5)
-plt.show()
+# plt.imshow(endgrid, aspect='equal')
+# plt.xlim(-.5,GRID_SIZE-.5) #the grid starts at [-.5,-.5]
+# plt.ylim(-.5,GRID_SIZE-.5)
+# plt.show()
 
 # animating the simulation, needs a different structure
 
